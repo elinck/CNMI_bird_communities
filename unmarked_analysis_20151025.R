@@ -3,8 +3,6 @@
 ##### and clean data                        #####
 #################################################
 
-setwd("~/Documents/*Science/*Research/Marianas/Point Counts/Data")
-
 # Define functions
 
 '%!in%' <- function(x,y)!('%in%'(x,y))
