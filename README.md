@@ -14,6 +14,9 @@ Linck, E., Fricke, E., Rogers, S. In prep. Varied abundance and functional diver
 **Description:** Tab-delimited raw point count data  
 **Notes:** Shorthand species IDs are first two letters of genus and species  
   
+**File:** FD_matrix.csv  
+**Description:**  Functional trait values for all species  
+  
 **File:**  lambda.out.csv  
 **Description:** Primary unmarked output for density estimates  
   
