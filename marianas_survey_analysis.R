@@ -5,7 +5,7 @@
 
 ### load libraries, clean data
 
-#setwd("~/Dropbox/marianas_code/CNMI_bird_communities/")
+setwd("~/Dropbox/Marianas/CNMI_bird_communities/")
 
 # Define functions
 '%!in%' <- function(x,y)!('%in%'(x,y))
@@ -14,7 +14,7 @@
 library(unmarked);library(reshape);library(plyr);library(FD);library(sciplot);library(vegan);library(ggplot2);library(ggmap);library(mapdata);library(maps);library(lme4)
 
 # Read in data. Each row = one species at each point. 
-birdcounts <- read.table("fulldata.txt", header=T) #load your data.
+birdcounts <- read.table("./data/fulldata.txt", header=T) #load your data.
 str(birdcounts)
 
 # change format of date
@@ -67,7 +67,7 @@ blank.umdata <- formatDistData(birdcounts.long,
                                occasionCol = "occasion")
 blank.umdata <- ifelse(blank.umdata>-1,0,0)
 
-# Now for the models -- comment out if you've already run them
+# Now for the models
 time1<-Sys.time()
 
 for(i in 1:length(levels(birdcounts.long$spp))){
@@ -111,21 +111,17 @@ for(i in 1:length(levels(birdcounts.long$spp))){
   
   #create dataframe in UMF format # island=sp.set.umfull$island, 
   sp.set.umf <- unmarkedFrameGDS(y = sp.set.umdata,  #columns should be labeled dc1,dc2, dc3, dc4 and so on, for each distance class and values within are counts of that bird species at that point for that distance class. 
-                                 siteCovs = data.frame(island=sp.set.umfull$island, point=sp.set.umfull$point), #site covariates are probably island, maybe site, and maybe point (not sure how they deal with repeated measures)
+                                 siteCovs = data.frame(site=sp.set.umfull$site, point=sp.set.umfull$point), #site covariates are probably island, maybe site, and maybe point (not sure how they deal with repeated measures)
                                  dist.breaks = c(0, 5, 10, 15, 20, 30, 40, 50, 100, 200),  #these are the distances at which you enter a new distance class
                                  numPrimary = 5,#numPrimary=ifelse(i==5,5,6), #number of surveys at each point
                                  survey = "point", unitsIn = "m")  #survey style is point, not transect.  unitsIn are meters, I suspect
-  if(length(levels(point.data.set$island))>1) {
-    mod <- gdistsamp(~island, ~1, ~1,data=sp.set.umf, keyfun="halfnorm", output="density", unitsOut="ha")#,
-    #starts=c(1,rep(0,dim(sp.set.umfull)[1]-1),3,3),
-    #method = ifelse(i==7, "SANN", "BFGS")
-    #)
-  } else {
-    mod <- gdistsamp(~1, ~1, ~1,data=sp.set.umf, keyfun="halfnorm", output="density", unitsOut="ha")
-  }
+  mod <- gdistsamp(~point, ~1, ~1,data=sp.set.umf, keyfun="halfnorm", output="density", unitsOut="ha",
+                   starts=c(1,rep(0,dim(sp.set.umfull)[1]-1),3,3),
+                   method = ifelse(i==7, "SANN", "BFGS")
+                   )
   
   # Make dataframe for predictions
-  newdf<-data.frame(island=levels(point.data.set$island))
+  newdf<-data.frame(point=factor(point.data.set$point))
   
   # Make the predictions
   lambda <- predict(mod, newdata=newdf, type="lambda", appendData=TRUE)
@@ -139,9 +135,9 @@ for(i in 1:length(levels(birdcounts.long$spp))){
   det <- cbind(spp,det)
   
   # Attach to ouput
-  lambda.island.out <- rbind(lambda.island.out,lambda)
-  phi.island.out <- rbind(phi.island.out,phi)
-  det.island.out <- rbind(det.island.out,det)
+  lambda.out <- rbind(lambda.out,lambda)
+  phi.out <- rbind(phi.out,phi)
+  det.out <- rbind(det.out,det)
   
   print(warnings())
   print(mod)
@@ -149,9 +145,11 @@ for(i in 1:length(levels(birdcounts.long$spp))){
 }
 time2<-Sys.time()
 
-write.csv(lambda.island.out,"lambda.island.out.csv")
-write.csv(phi.island.out,"phi.island.out.csv")
-write.csv(det.island.out,"det.island.out.csv")
+
+
+write.csv(lambda.out,"lambda.out.csv")
+write.csv(phi.out,"phi.out.csv")
+write.csv(det.out,"det.out.csv")
 
 # read in saved values
 lambda.out <- read.csv("lambda.out.csv",row.names=1)
@@ -176,7 +174,7 @@ lambda.out$spp<-revalue(lambda.out$spp,spp.converter)
 phi.out$spp<-revalue(phi.out$spp,spp.converter)
 det.out$spp<-revalue(det.out$spp,spp.converter)
 
-fd.mat <- read.csv("FD_matrix.csv",row.names=1)
+fd.mat <- read.csv("./data/FD_matrix_20170504.csv",row.names=1)
 fd.mat <- fd.mat[,1:10]# Remove the detailed foraging location data 
 #fd.mat <- fd.mat[,-6] #No seed eaters
 head(fd.mat)
@@ -282,6 +280,7 @@ richness.pointdate <- table(rich.dat$pointdate)
 rich.no.duplicates <- rich.dat[!duplicated(rich.dat$pointdate),]
 rich.no.duplicates <- rich.no.duplicates[order(rich.no.duplicates$pointdate),]
 rich.no.duplicates <- cbind(rich.no.duplicates,richness.pointdate)
+
 # Relevel so Saipan is reference
 rich.no.duplicates$island <- relevel(rich.no.duplicates$island, ref="Tinian")
 rich.no.duplicates$island <- relevel(rich.no.duplicates$island, ref="Saipan")
@@ -359,8 +358,10 @@ legend("topright",pch=c(21:23),
 
 ### five panel with Total Abundance, Shannon Diversity, Functional Diversity, Func Evenness
 dev.off()
+pdf("fiveplots.pdf",width = 6, height = 9)
 abund.div.cols <- c("total.abund","richness","shannon.div","FEve","FDiv")
-par(mfrow=c(3,2),pin=c(1.75,1.75),mar=c(0.5,0.5,0.5,0.5))
+par(mfrow=c(3,2),pin=c(1.5,2.5))
+#par(mfrow=c(3,2),pin=c(1,1),mar=c(0.5,0.5,0.5,0.5))
 for(i in 1:length(abund.div.cols)){
   if(i==2){
     plot.new()
@@ -394,6 +395,104 @@ for(i in 1:length(abund.div.cols)){
     axis(1,at=c(1,2,3),labels=c("Saipan","Tinian","Rota"),cex.lab=1)
   }
 }
+dev.off()
+
+### rerun unmarked for island specific models
+
+lambda.island.out <- data.frame(spp=character(),Predicted=numeric(),SE=numeric(),lower=numeric(),upper=numeric(),point=character())
+phi.island.out <- lambda.island.out #do the same for phi
+det.island.out <- lambda.island.out #do the same for det
+
+# Now for the models
+time1<-Sys.time()
+
+for(i in 1:length(levels(birdcounts.long$spp))){
+  # create subset of data for one focal spp
+  sp.set <- subset(birdcounts.long, spp==levels(birdcounts.long$spp)[i])
+  
+  #### don't get estimates for islands where we didn't see the spp
+  sp.set$point <- as.factor(as.character(sp.set$point))
+  sp.set$island <- as.factor(as.character(sp.set$island))
+  sp.set$site <- as.factor(as.character(sp.set$site))
+  
+  #get into binned format, with each point seen as a replicate by the number of dates sampled (OccasioncCol="date")
+  sp.set.umdata <- formatDistData(sp.set, distCol="dist",
+                                  transectNameCol="point", 
+                                  dist.breaks=distance.cuttoffs,
+                                  occasionCol="occasion")
+  sp.set_rows <- row.names(sp.set.umdata)
+  
+  # Add in observed data into correct format with true zeros present
+  sp.blank.umdata <- blank.umdata
+  sp.blank.umdata[sp.set_rows,1:((length(distance.cuttoffs)-1)*5)] <- sp.set.umdata
+  sp.set.umdata <- sp.blank.umdata[,1:((length(distance.cuttoffs)-1)*5)]
+  # Now overwrite the row names
+  sp.set_rows <- row.names(sp.set.umdata)
+  
+  point.data.set <- point.data
+  point.data.set <- point.data.set[which(as.numeric(point.data.set$island) %in% which(present[,i]==T)),] # Will subset to islands where it's present later for the umdata file as well
+  point.data.set$point <- factor(point.data.set$point)
+  point.data.set$island <- factor(point.data.set$island)
+  point.data.set$site <- factor(point.data.set$site)
+  sp.set.umdata <- sp.set.umdata[which(as.character(point.data$island) %in% rownames(present)[which(present[,i]==T)]),] # This is where we subset to islands present
+  # Now overwrite the row names again!
+  sp.set_rows <- row.names(sp.set.umdata)
+  
+  sp.set.umfull <- cbind(sp.set.umdata,sp.set_rows, point.data.set)
+  
+  # Need to make it forget all the factor levels not represented in sp.set.umfull
+  sp.set.umfull$point <- factor(sp.set.umfull$point)
+  sp.set.umfull$island <- factor(sp.set.umfull$island)
+  sp.set.umfull$site <- factor(sp.set.umfull$site)
+  
+  #create dataframe in UMF format # island=sp.set.umfull$island, 
+  sp.set.umf <- unmarkedFrameGDS(y = sp.set.umdata,  #columns should be labeled dc1,dc2, dc3, dc4 and so on, for each distance class and values within are counts of that bird species at that point for that distance class. 
+                                 siteCovs = data.frame(island=sp.set.umfull$island, point=sp.set.umfull$point), #site covariates are probably island, maybe site, and maybe point (not sure how they deal with repeated measures)
+                                 dist.breaks = c(0, 5, 10, 15, 20, 30, 40, 50, 100, 200),  #these are the distances at which you enter a new distance class
+                                 numPrimary = 5,#numPrimary=ifelse(i==5,5,6), #number of surveys at each point
+                                 survey = "point", unitsIn = "m")  #survey style is point, not transect.  unitsIn are meters, I suspect
+  if(length(levels(point.data.set$island))>1) {
+    mod <- gdistsamp(~island, ~1, ~1,data=sp.set.umf, keyfun="halfnorm", output="density", unitsOut="ha")#,
+    #starts=c(1,rep(0,dim(sp.set.umfull)[1]-1),3,3),
+    #method = ifelse(i==7, "SANN", "BFGS")
+    #)
+  } else {
+    mod <- gdistsamp(~1, ~1, ~1,data=sp.set.umf, keyfun="halfnorm", output="density", unitsOut="ha")
+  }
+  
+  
+  # Make dataframe for predictions
+  newdf<-data.frame(island=levels(point.data.set$island))
+  
+  # Make the predictions
+  lambda <- predict(mod, newdata=newdf, type="lambda", appendData=TRUE)
+  phi <- predict(mod, newdata=newdf, type="phi", appendData=TRUE)
+  det <- predict(mod, newdata=newdf, type="det", appendData=TRUE)
+  
+  # Get ready to paste these on to the end of the output dataframes
+  spp <- rep(levels(birdcounts.long$spp)[i],dim(lambda)[1])
+  lambda <- cbind(spp,lambda)
+  phi <- cbind(spp,phi)
+  det <- cbind(spp,det)
+  
+  # Attach to ouput
+  lambda.island.out <- rbind(lambda.island.out,lambda)
+  phi.island.out <- rbind(phi.island.out,phi)
+  det.island.out <- rbind(det.island.out,det)
+  
+  print(warnings())
+  print(mod)
+  print(paste(i,"out of",length(levels(birdcounts.long$spp)),"done at", Sys.time(),sep=" "))
+}
+time2<-Sys.time()
+
+write.csv(lambda.island.out,"lambda.island.out.csv")
+write.csv(phi.island.out,"phi.island.out.csv")
+write.csv(det.island.out,"det.island.out.csv")
+
+lambda.island.out <- read.csv("lambda.island.out.csv",row.names=1)
+phi.island.out <- read.csv("phi.island.out.csv",row.names=1)
+det.island.out <- read.csv("det.island.out.csv",row.names=1)
 
 lambda.island.out$spp <- as.character(lambda.island.out$spp)
 lambda.island.out$island <- as.character(lambda.island.out$island)
@@ -466,27 +565,21 @@ abund.wide
 #data(fd.mat) # fd.mat
 
 # make cca plot
-colnames(abund.wide) <- c("Tinian","Tinian","Tinian","Saipan","Saipan","Saipan","Rota","Rota","Rota","Rota","Rota","Rota","Tinian","Tinian","Tinian","Tinian","Tinian","Tinian","Saipan","Saipan","Saipan","Saipan","Saipan","Saipan","Rota","Rota","Rota")
-cols <- c("grey30","grey30","grey30","grey60","grey60","grey60","grey90","grey90","grey90","grey90","grey90","grey90","grey30","grey30","grey30","grey30","grey30","grey30","grey60","grey60","grey60","grey60","grey60","grey60","grey90","grey90","grey90")
+colnames(abund.wide) <- c("T","T","T","S","S","S","R","R","R","R","R","R","T","T","T","T","T","T","S","S","S","S","S","S","R","R","R")
+cols <- c("grey40","grey40","grey40","grey60","grey60","grey60","grey90","grey90","grey90","grey90","grey90","grey90","grey40","grey40","grey40","grey40","grey40","grey40","grey60","grey60","grey60","grey60","grey60","grey60","grey90","grey90","grey90")
 fd.mat$num.foraging <- as.numeric(as.factor(fd.mat$ForagingLocation))
 vare.cca <- cca(abund.wide,fd.mat[,c(1:6,8)])#[,c(1:5)])
 vare.cca
-labls <- c("invert","vert","fruit","nectar","seed","mass")
 par(mfrow=c(1,1),pin=c(5,4))
-plot(vare.cca,type="nocne",scaling="sites")
+labls <- c("invert","vert","fruit","nectar","seed","mass")
+plot(vare.cca,type="none",scaling="sites")
+text(vare.cca,display="species",col=cols,cex=0.75,font=2)
 text(vare.cca,display="sites",cex=0.75,col=c("grey25"))
-text(vare.cca,display="species",col=cols,cex=0.50)
 text(vare.cca,display="bp",cex=1,labels = labls, scaling="sites")
 
-orditkplot(vare.cca, display = "species", choices = 1:2,tcex = 0.8, tcol=cols, labels = labls, pch = 1,  pcol, pbg, pcex = 0.7)
-
-plot(vare.cca, col=1,
-     xlim=c(-1,1),
-     ylim=c(-0.5,0.5),
-     text.cca=)
 
 #plot outline of islands
-map <- map_data("worldHires", xlim=c(143,147), ylim=c(14,16))
+map <- map_data("worldHires", xlim=c(130,150), ylim=c(12,16))
 ggplot() + coord_map()+
   geom_path(data=map, aes(x=long, y=lat, group=group)) +
   theme_bw() +
@@ -495,4 +588,13 @@ ggplot() + coord_map()+
   ylab("Latitude") +
   guides(fill=guide_legend(title=NULL))
 
+#plot pacific
+map <- map_data("world", xlim=c(100,165), ylim=c(-12,25))
+ggplot() + coord_map()+
+  geom_path(data=map, aes(x=long, y=lat, group=group)) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  xlab("Longitude") +
+  ylab("Latitude") +
+  guides(fill=guide_legend(title=NULL))
 
