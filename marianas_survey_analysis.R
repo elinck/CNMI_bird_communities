@@ -37,6 +37,7 @@ point.data <- point.data[,-c(5:9)]
 birdcounts.long <- untable(birdcounts[,c(1:6,8:11)], num=birdcounts[,7])
 
 # remove data for certain species that we have to few estimates for (<10)
+# comment out for abundance estimates figure!
 spp.included <- levels(birdcounts.long$spp)[which(levels(birdcounts.long$spp) %!in% c("coku","mela","gyal"))]
 birdcounts.long <- birdcounts.long[which(birdcounts.long$spp %in% spp.included),]
 birdcounts.long$spp <- as.factor(as.character(birdcounts.long$spp)) # makes r forget those other levels of this factor
@@ -514,15 +515,33 @@ plot(-10,
      cex=2,
      pch=16)
 
+# spp.converter w/ all spp., symbols for figure
+spp.converter<-c("apop"="mist",
+                 "clma"="gowe",
+                 "dima"="(bldr$)",
+                 "gaxa"="wtgd",
+                 "gaga"="(chic)",
+                 "mota"="timo",
+                 "myru"="mihe",
+                 "ptro"="mafd",
+                 "rhru"="rufa",
+                 "stbi"="(iscd)",
+                 "toch"="cokf",
+                 "zoco"="brwe$",
+                 "mela"="mime*",
+                 "coku"="rocr*",
+                 "gyal"="whte*")
+
 # convert estimates to new species name
 lambda.island.out$spp<-revalue(lambda.island.out$spp,spp.converter)
 phi.island.out$spp<-revalue(phi.island.out$spp,spp.converter)
 det.island.out$spp<-revalue(det.island.out$spp,spp.converter)
 
-levels(birdcounts.long$spp)<-revalue(birdcounts.long$spp,spp.converter)
-levels(birdcounts.long$spp)
+#levels(birdcounts.long$spp)<-revalue(birdcounts.long$spp,spp.converter)
+#levels(lambda.island.out$spp)<-revalue(lambda.island.out$spp,spp.converter)
+#levels(birdcounts.long$spp)
 #orderbird <- order(tapply(lambda.island.out$Predicted,lambda.island.out$spp,mean),decreasing=F) # not working
-orderbird<- c(2,7,5,6,11,8,12,10,3,9,4,1) # vector with preferred order
+orderbird<- c(3,8,14,11,10,6,7,1,12,9,2,15,13,5,4) # vector with preferred order
 for(i in 1:length(levels(birdcounts.long$spp))) {
   sp.set <- subset(lambda.island.out,lambda.island.out$spp==levels(birdcounts.long$spp)[orderbird[i]])
   rownames(sp.set) <- sp.set$island
@@ -544,7 +563,8 @@ for(i in 1:length(levels(birdcounts.long$spp))) {
 legend("topleft",pch=c(21,22,23),
        legend=c("Saipan","Tinian","Rota"),
        bty="n")
-axis(1, at= x.vals[,2], labels = levels(birdcounts.long$spp)[orderbird])
+axis(1, at= x.vals[,2], labels = levels(revalue(birdcounts.long$spp,spp.converter))[orderbird], las=2)
+
 
 ### cca
 
