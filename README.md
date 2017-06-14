@@ -21,11 +21,11 @@ Linck, E., Fricke, E., Rogers, S. In prep. Varied abundance and functional diver
 **Description:** Primary unmarked output for density estimates. Copies with `.*island*.` and / or `.*allspp*.` indicate version where 
 estimates are island (versus site) specific, and where all species are included regardless of minimum individual threshhold. 
   
-**Files:**  `det.out.csv`   
+**Files:**  `det.*.out.*.csv`   
 **Description:** Additional unmarked output for density estimates Copies with `.*island*.` and / or `.*allspp*.` indicate version where 
 estimates are island (versus site) specific, and where all species are included regardless of minimum individual threshhold. 
   
-**Files:** `phi.out.csv`   
+**Files:** `phi.*.out.*.csv`   
 **Description:** Additional unmarked output for density estimates. Copies with `.*island*.` and / or `.*allspp*.` indicate version where 
 estimates are island (versus site) specific, and where all species are included regardless of minimum individual threshhold.   
   
