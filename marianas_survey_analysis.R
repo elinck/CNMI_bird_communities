@@ -38,9 +38,9 @@ birdcounts.long <- untable(birdcounts[,c(1:6,8:11)], num=birdcounts[,7])
 
 # remove data for certain species that we have to few estimates for (<10)
 # comment out for abundance estimates figure!
-spp.included <- levels(birdcounts.long$spp)[which(levels(birdcounts.long$spp) %!in% c("coku","mela","gyal"))]
-birdcounts.long <- birdcounts.long[which(birdcounts.long$spp %in% spp.included),]
-birdcounts.long$spp <- as.factor(as.character(birdcounts.long$spp)) # makes r forget those other levels of this factor
+#spp.included <- levels(birdcounts.long$spp)[which(levels(birdcounts.long$spp) %!in% c("coku","mela","gyal"))]
+#birdcounts.long <- birdcounts.long[which(birdcounts.long$spp %in% spp.included),]
+#birdcounts.long$spp <- as.factor(as.character(birdcounts.long$spp)) # makes r forget those other levels of this factor
 
 # Remove the 6th occasion to achieve equal samples for each site (Tinian just has 5 occasions, rather than 6)
 # Otherwise, the code interprets it as though Tinians just has super low densities
@@ -153,9 +153,9 @@ write.csv(phi.out,"phi.out.csv")
 write.csv(det.out,"det.out.csv")
 
 # read in saved values
-lambda.out <- read.csv("lambda.out.csv",row.names=1)
-phi.out <- read.csv("phi.out.csv",row.names=1)
-det.out <- read.csv("det.out.csv",row.names=1)
+lambda.out <- read.csv("./data/lambda.out.csv",row.names=1)
+phi.out <- read.csv("./data/phi.out.csv",row.names=1)
+det.out <- read.csv("./data/det.out.csv",row.names=1)
 
 # Convert to common name 4-letter codes
 spp.converter<-c("apop"="mist",
@@ -229,13 +229,13 @@ anova(abund.mod0,abund.mod) # LRT shows that island is a strong predictor of tot
 
 feve.mod0 <- lmer(FEve~1+(1|site),dat=fd.df)
 feve.mod <- lmer(FEve~island+(1|site),dat=fd.df)
-summary(fd.mod)
-anova(abund.mod0,abund.mod) # LRT shows that island is a strong predictor of FEve
+summary(feve.mod)
+anova(feve.mod0,feve.mod) # LRT shows that island is NOT a strong predictor of FEve
 
-feve.mod0 <- lmer(shannon.div~1+(1|site),dat=fd.df)
-feve.mod <- lmer(shannon.div~island+(1|site),dat=fd.df)
-summary(fd.mod)
-anova(abund.mod0,abund.mod) # LRT shows that island is a strong predictor of FEve
+shan.mod0 <- lmer(shannon.div~1+(1|site),dat=fd.df)
+shan.mod <- lmer(shannon.div~island+(1|site),dat=fd.df)
+summary(shan.mod)
+anova(shan.mod0,shan.mod) # LRT shows that island is a strong predictor of shannon div
 
 tapply(fd.df$FDiv,fd.df$island,mean)
 tapply(fd.df$total.abund,fd.df$island,mean)
@@ -323,6 +323,7 @@ x.vals <- x.vals[1:(length(x.vals)-1)]
 x.vals <- matrix(x.vals,nrow=3,byrow=F)
 
 # Make blank plot, then will fill in some data
+pdf("community_weighted_means.pdf")
 par(mfrow=c(1,1),pin=c(6,4))
 plot(x.vals,
      y=rep(-100,length(x.vals)),
@@ -356,10 +357,10 @@ axis(1, at = x.vals[2,], labels=gsub("Diet.","",cwm))
 legend("topright",pch=c(21:23),
        legend=islands,
        bty="n")
+dev.off()
 
 ### five panel with Total Abundance, Shannon Diversity, Functional Diversity, Func Evenness
-dev.off()
-pdf("fiveplots.pdf",width = 6, height = 9)
+pdf("fiveplots.pdf",width = 6, height = 10)
 abund.div.cols <- c("total.abund","richness","shannon.div","FEve","FDiv")
 par(mfrow=c(3,2),pin=c(1.5,2.5))
 #par(mfrow=c(3,2),pin=c(1,1),mar=c(0.5,0.5,0.5,0.5))
@@ -491,9 +492,9 @@ write.csv(lambda.island.out,"lambda.island.out.csv")
 write.csv(phi.island.out,"phi.island.out.csv")
 write.csv(det.island.out,"det.island.out.csv")
 
-lambda.island.out <- read.csv("lambda.island.out.csv",row.names=1)
-phi.island.out <- read.csv("phi.island.out.csv",row.names=1)
-det.island.out <- read.csv("det.island.out.csv",row.names=1)
+lambda.island.out <- read.csv("./data/lambda.island.out.csv",row.names=1)
+phi.island.out <- read.csv("./data/phi.island.out.csv",row.names=1)
+det.island.out <- read.csv("./data/det.island.out.csv",row.names=1)
 
 lambda.island.out$spp <- as.character(lambda.island.out$spp)
 lambda.island.out$island <- as.character(lambda.island.out$island)
@@ -503,6 +504,7 @@ x.vals <- c(1,1+cumsum(rep(interval,length(levels(birdcounts.long$spp)))))
 x.vals <- x.vals[1:(length(x.vals)-1)]
 x.vals <- matrix(x.vals,ncol=3,byrow=T)
 
+quartz()
 par(mfrow=c(1,1),pin=c(7,5))
 plot(-10,
      xlim=c(min(x.vals)-1,max(x.vals)+1),
