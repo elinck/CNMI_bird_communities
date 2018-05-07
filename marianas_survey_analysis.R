@@ -505,7 +505,7 @@ x.vals <- x.vals[1:(length(x.vals)-1)]
 x.vals <- matrix(x.vals,ncol=3,byrow=T)
 
 quartz()
-par(mfrow=c(1,1),pin=c(7,5))
+par(mfrow=c(1,1),pin=c(6,4))
 plot(-10,
      xlim=c(min(x.vals)-1,max(x.vals)+1),
      ylim=c(min(lambda.island.out$lower),max(lambda.island.out$upper)),
@@ -539,9 +539,9 @@ lambda.island.out$spp<-revalue(lambda.island.out$spp,spp.converter)
 phi.island.out$spp<-revalue(phi.island.out$spp,spp.converter)
 det.island.out$spp<-revalue(det.island.out$spp,spp.converter)
 
-#levels(birdcounts.long$spp)<-revalue(birdcounts.long$spp,spp.converter)
-#levels(lambda.island.out$spp)<-revalue(lambda.island.out$spp,spp.converter)
-#levels(birdcounts.long$spp)
+levels(birdcounts.long$spp)<-revalue(birdcounts.long$spp,spp.converter)
+levels(lambda.island.out$spp)<-revalue(lambda.island.out$spp,spp.converter)
+levels(birdcounts.long$spp)
 #orderbird <- order(tapply(lambda.island.out$Predicted,lambda.island.out$spp,mean),decreasing=F) # not working
 orderbird<- c(3,8,14,11,10,6,7,1,12,9,2,15,13,5,4) # vector with preferred order
 for(i in 1:length(levels(birdcounts.long$spp))) {
@@ -565,7 +565,7 @@ for(i in 1:length(levels(birdcounts.long$spp))) {
 legend("topleft",pch=c(21,22,23),
        legend=c("Saipan","Tinian","Rota"),
        bty="n")
-axis(1, at= x.vals[,2], labels = levels(revalue(birdcounts.long$spp,spp.converter))[orderbird], las=2)
+axis(1, at= x.vals[,2], labels = levels(birdcounts.long$spp)[orderbird], las=2)
 
 
 ### cca
