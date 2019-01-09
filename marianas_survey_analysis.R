@@ -19,7 +19,8 @@ ipak <- function(pkg){
 
 # load libraries
 packages <- c("unmarked", "reshape", "plyr", "FD", "sciplot",
-              "vegan", "ggplot2", "ggmap", "mapdata", "maps", "lme4")
+              "vegan", "ggplot2", "ggmap", "mapdata", "maps", "lme4",
+              "multcomp")
 
 ipak(packages)
 
@@ -226,33 +227,34 @@ fd.df[,(dim(fd.df)[2]:(dim(fd.df)[2]+dim(dfvals$CWM)[2]))] <- dfvals$CWM[rowname
 fd.df$island <- relevel(fd.df$island, ref="Tinian")
 fd.df$island <- relevel(fd.df$island, ref="Saipan")
 
-head(fd.df)
-
-fd.mod0 <- lmer(FDiv~1+(1|site),dat=fd.df)
-fd.mod <- lmer(FDiv~island+(1|site),dat=fd.df)
-summary(fd.mod)
-anova(fd.mod0,fd.mod) # Likelihood ratio test shows that island is a strong predictor of FD
-
-abund.mod0 <- lmer(total.abund~1+(1|site),dat=fd.df)
-abund.mod <- lmer(total.abund~island+(1|site),dat=fd.df)
-summary(fd.mod)
-anova(abund.mod0,abund.mod) # LRT shows that island is a strong predictor of total abundance
-
-feve.mod0 <- lmer(FEve~1+(1|site),dat=fd.df)
-feve.mod <- lmer(FEve~island+(1|site),dat=fd.df)
-summary(feve.mod)
-anova(feve.mod0,feve.mod) # LRT shows that island is NOT a strong predictor of FEve
-
-shan.mod0 <- lmer(shannon.div~1+(1|site),dat=fd.df)
-shan.mod <- lmer(shannon.div~island+(1|site),dat=fd.df)
-summary(shan.mod)
-anova(shan.mod0,shan.mod) # LRT shows that island is a strong predictor of shannon div
-
-tapply(fd.df$FDiv,fd.df$island,mean)
-tapply(fd.df$total.abund,fd.df$island,mean)
-colnames(fd.df)
-#tapply(fd.df$Fruit,fd.df$island,mean)
-tapply(fd.df$Diet.Fruit,fd.df$island,mean)
+# # This is duplicated because of the more efficient for loop below.... Think I can delete.
+# head(fd.df)
+# 
+# fd.mod0 <- lmer(FDiv~1+(1|site),dat=fd.df)
+# fd.mod <- lmer(FDiv~island+(1|site),dat=fd.df)
+# summary(fd.mod)
+# anova(fd.mod0,fd.mod) # Likelihood ratio test shows that island is a strong predictor of FD
+# 
+# abund.mod0 <- lmer(total.abund~1+(1|site),dat=fd.df)
+# abund.mod <- lmer(total.abund~island+(1|site),dat=fd.df)
+# summary(fd.mod)
+# anova(abund.mod0,abund.mod) # LRT shows that island is a strong predictor of total abundance
+# 
+# feve.mod0 <- lmer(FEve~1+(1|site),dat=fd.df)
+# feve.mod <- lmer(FEve~island+(1|site),dat=fd.df)
+# summary(feve.mod)
+# anova(feve.mod0,feve.mod) # LRT shows that island is NOT a strong predictor of FEve
+# 
+# shan.mod0 <- lmer(shannon.div~1+(1|site),dat=fd.df)
+# shan.mod <- lmer(shannon.div~island+(1|site),dat=fd.df)
+# summary(shan.mod)
+# anova(shan.mod0,shan.mod) # LRT shows that island is a strong predictor of shannon div
+# 
+# tapply(fd.df$FDiv,fd.df$island,mean)
+# tapply(fd.df$total.abund,fd.df$island,mean)
+# colnames(fd.df)
+# #tapply(fd.df$Fruit,fd.df$island,mean)
+# tapply(fd.df$Diet.Fruit,fd.df$island,mean)
 
 colnames(fd.df)
 
@@ -272,6 +274,9 @@ analysis.out$tinian.ci.hi <- c(NA)
 analysis.out$rota.ci.hi <- c(NA)
 analysis.out$lrt <- c(NA)
 analysis.out$chisq <- c(NA)
+analysis.out$sai.let <- c(NA)
+analysis.out$tin.let <- c(NA)
+analysis.out$rot.let <- c(NA)
 
 for(i in cols.to.test){
   mod0 <- lmer(fd.df[,i]~1+(1|site),dat=fd.df)
@@ -283,11 +288,15 @@ for(i in cols.to.test){
   analysis.out[which(analysis.out$response==colnames(fd.df)[i]),8:10] <- ci[,2]
   analysis.out[which(analysis.out$response==colnames(fd.df)[i]),11] <- anova(mod0,mod1)$"Pr(>Chisq)"[2]
   analysis.out[which(analysis.out$response==colnames(fd.df)[i]),12] <- anova(mod0,mod1)$"Chisq"[2]
+  analysis.out[which(analysis.out$response==colnames(fd.df)[i]),13:15] <- cld(glht(mod1, linfct = mcp(island="Tukey")))$mcletters$Letters
 
 }
 
 
-# Species richness. This doesn't use the abundance data, so we're going back to the bidcounts data to just get richness at each pointcount
+# Species richness. 
+# This doesn't use the abundance data, so we're going back to the bidcounts data 
+# to just get richness at each pointcount, so a little clunky that it doesn't
+# fit in the same for loop
 rich.dat <- birdcounts.long[!duplicated(birdcounts.long[,c(1:6)]),]
 rich.dat$pointdate <- as.factor(as.character(rich.dat$pointdate))
 richness.pointdate <- table(rich.dat$pointdate)
@@ -314,67 +323,27 @@ analysis.out[(dim(analysis.out)[1]),11] <- anova(mod.rich0,mod.rich1)$"Pr(>Chisq
 analysis.out[(dim(analysis.out)[1]),12] <- anova(mod.rich0,mod.rich1)$"Chisq"[2]
 analysis.out$response <- as.character(analysis.out$response)
 analysis.out[(dim(analysis.out)[1]),1] <- "richness"
+analysis.out[which(analysis.out$response=="richness"),13:15] <- cld(glht(mod.rich1, linfct = mcp(island="Tukey")))$mcletters$Letters
 
-analysis.long <- reshape(analysis.out,varying=list(c(2:4),c(5:7),c(8:10)),idvar="response",direction="long")
-colnames(analysis.long)[c(3:6)] <- c("island","estimate","ci.lo","ci.hi")
+
+
+# Get a long-format analysis.out for ease in making plots.
+analysis.long <- reshape(analysis.out[1:12],varying=list(c(2:4),c(5:7),c(8:10)),idvar="response",direction="long")
+colnames(analysis.long)[c(4:7)] <- c("island","estimate","ci.lo","ci.hi")
 analysis.long$island <- c("Saipan","Tinian","Rota")[analysis.long$island]
 analysis.long$island <- factor(analysis.long$island,levels=c("Saipan","Tinian","Rota"))
 
 
-### Make a Community Weighted Mean plot
+# Some helper function for plots
 range1 <- function(x) range(x)[1]
 range2 <- function(x) range(x)[2]
 
 q25 <- function(x) quantile(x,prob=0.25)
 q75 <- function(x) quantile(x,prob=0.75)
 
-cwm <- c("Diet.Fruit","Diet.Inv","Diet.Nect","Diet.Vert","Diet.Seed")
-islands <- c("Saipan","Tinian","Rota")
-
-interval <- c(1,1,5)
-x.vals <- c(1,1+cumsum(rep(interval,5)))
-x.vals <- x.vals[1:(length(x.vals)-1)]
-x.vals <- matrix(x.vals,nrow=3,byrow=F)
-
-# Make blank plot, then will fill in some data
-pdf("community_weighted_means.pdf")
-par(mfrow=c(1,1),pin=c(6,4))
-plot(x.vals,
-     y=rep(-100,length(x.vals)),
-     ylim=c(0,60),
-     frame.plot=F,
-     ylab="Community Weighted Mean",
-     xlab="",
-     las=1,
-     xaxt="n",
-     cex=2,
-     pch=16)
-
-for(i in 1:length(cwm)) {
-  
-  row <- which(analysis.out$response==cwm[i])
-  
-  segments(x0=x.vals[,i],
-           y0=as.numeric(analysis.out[row,c("saipan.ci.lo","tinian.ci.lo","rota.ci.lo")]),
-           y1=as.numeric(analysis.out[row,c("saipan.ci.hi","tinian.ci.hi","rota.ci.hi")]),
-           lwd=10,
-           col=c("grey30","grey60","grey90"),
-           lend="butt")
-    
-  points(x.vals[,i],as.numeric(analysis.out[row,c("saipan","tinian","rota")]),
-         pch=c(21:23),
-         bg="white")
-}
-
-axis(1, at = x.vals[2,], labels=gsub("Diet.","",cwm))
-
-legend("topright",pch=c(21:23),
-       legend=islands,
-       bty="n")
-dev.off()
 
 ### five panel with Total Abundance, Shannon Diversity, Functional Diversity, Func Evenness
-pdf("fiveplots.pdf",width = 6, height = 10)
+pdf("fiveplots.pdf",width = 6, height = 9, useDingbats=FALSE)
 abund.div.cols <- c("total.abund","richness","shannon.div","FEve","FDiv")
 par(mfrow=c(3,2),pin=c(1.5,2.5))
 #par(mfrow=c(3,2),pin=c(1,1),mar=c(0.5,0.5,0.5,0.5))
@@ -386,13 +355,14 @@ for(i in 1:length(abund.div.cols)){
   col.set <- subset(analysis.long,analysis.long$response==abund.div.cols[i])
   plot(estimate~c(1,2,3),data=col.set,
        xlim=c(0.75,3.25),
-       ylim=c(min(col.set[,4:6])*.9,max(col.set[,4:6])*1.1),
+       ylim=c(min(col.set[,5:7])*.9,max(col.set[,5:7])*1.1),
        frame.plot=F,
        ylab="",
        xlab="",
        las=1,
        pch=c(21:23),
        xaxt="n",cex=1.5)
+  text(1, max(col.set[,5:7])*1.1, c("A", "B", "C", "D", "E")[i], cex = 1.5)
   mtext(c("Total Abundance (birds/ha)","Richness","Shannon Diversity","Functional Evenness","Functional Diversity")[i],
         side=2,
         line=4)
@@ -403,12 +373,15 @@ for(i in 1:length(abund.div.cols)){
   points(estimate~c(1,2,3),data=col.set,
          pch=c(21:23),cex=1.5,
          bg="white")
+  text(1:3, min(col.set[,5:7])*.9, 
+       analysis.out[which(analysis.out$response==abund.div.cols[i]), 13:15],
+       cex = 1.2)
          
   if(i==length(abund.div.cols)){
-    axis(1,at=c(1,2,3),labels=c("Saipan","Tinian","Rota"),cex.lab=1)
+    axis(1,at=c(1,2,3),labels=c("Saipan","Tinian","Rota"),cex.axis=1.3)
   }
   if(i==length(abund.div.cols)-1){
-    axis(1,at=c(1,2,3),labels=c("Saipan","Tinian","Rota"),cex.lab=1)
+    axis(1,at=c(1,2,3),labels=c("Saipan","Tinian","Rota"),cex.axis=1.3)
   }
 }
 dev.off()
@@ -514,10 +487,7 @@ det.island.out <- read.csv("./data/det.island.out.csv",row.names=1)
 lambda.island.out$spp <- as.character(lambda.island.out$spp)
 lambda.island.out$island <- as.character(lambda.island.out$island)
 
-interval <- c(1,1,4)
-x.vals <- c(1,1+cumsum(rep(interval,length(levels(birdcounts.long$spp)))))
-x.vals <- x.vals[1:(length(x.vals)-1)]
-x.vals <- matrix(x.vals,ncol=3,byrow=T)
+
 
 
 
@@ -550,9 +520,13 @@ levels(birdcounts.long$spp)
 orderbird <- order(tapply(lambda.island.out$Predicted,lambda.island.out$spp,max),decreasing=T)
 #orderbird<- c(3,8,14,11,10,6,7,1,12,9,2,15,13,5,4) # vector with preferred order
 
+interval <- c(1,1,2.5)
+x.vals <- c(1,1+cumsum(rep(interval,length(levels(birdcounts.long$spp)))))
+x.vals <- x.vals[1:(length(x.vals)-1)]
+x.vals <- matrix(x.vals,ncol=3,byrow=T)
 
 pdf("abundance.pdf", width = 8, height = 6)
-par(mfrow=c(1,1),pin=c(6,4))
+par(mfrow=c(1,1),pin=c(6.3,4))
 plot(-10,
      xlim=c(min(x.vals)-1,max(x.vals)+1),
      ylim=c(min(lambda.island.out$lower),max(lambda.island.out$upper)),
@@ -587,7 +561,12 @@ for(i in orderbird) {#1:length(orderbird)) {
 legend("topleft",pch=c(21,22,23),
        legend=c("Saipan","Tinian","Rota"),
        bty="n")
-axis(1, at= x.vals[,2], labels = levels(factor(lambda.island.out$spp))[orderbird], las=2)
+axis(1, 
+     at= x.vals[,2],
+     labels = ifelse(levels(factor(lambda.island.out$spp))[orderbird] == "(iscd)",
+                     "(phcd)",
+                     levels(factor(lambda.island.out$spp))[orderbird]), # This is a clunky manual correction for the island collared dove being the Philippine Collared Dove
+     las=2)
 
 dev.off()
 
@@ -609,6 +588,62 @@ abund.wide
 
 #data(fd.mat) # fd.mat
 
+
+
+
+### Make a Community Weighted Mean plot
+cwm <- c("Diet.Fruit","Diet.Inv","Diet.Nect","Diet.Vert","Diet.Seed")
+islands <- c("Saipan","Tinian","Rota")
+
+interval <- c(1,1,2.5)
+x.vals <- c(1,1+cumsum(rep(interval,5)))
+x.vals <- x.vals[1:(length(x.vals)-1)]
+x.vals <- matrix(x.vals,nrow=3,byrow=F)
+
+
+# Make blank plot, then will fill in some data
+pdf("cwm.pdf", width = 6, height = 4, useDingbats=FALSE)
+par(mfrow=c(1,1),pin=c(3.5,3))
+plot(x.vals,
+     y=rep(-100,length(x.vals)),
+     xlim = c(-1,max(x.vals)),
+     ylim=c(0,60),
+     frame.plot=F,
+     ylab="Community Weighted Mean",
+     xlab="",
+     las=1,
+     xaxt="n",
+     cex=2,
+     pch=16)
+
+for(i in 1:length(cwm)) {
+  
+  row <- which(analysis.out$response==cwm[i])
+  
+  segments(x0=x.vals[,i],
+           y0=as.numeric(analysis.out[row,c("saipan.ci.lo","tinian.ci.lo","rota.ci.lo")]),
+           y1=as.numeric(analysis.out[row,c("saipan.ci.hi","tinian.ci.hi","rota.ci.hi")]),
+           lwd=10,
+           col=c("grey30","grey60","grey90"),
+           lend="butt")
+  
+  points(x.vals[,i],as.numeric(analysis.out[row,c("saipan","tinian","rota")]),
+         pch=c(21:23),
+         bg="white")
+  text(x.vals[,i], 
+       as.numeric(analysis.out[row,c("saipan.ci.hi","tinian.ci.hi","rota.ci.hi")]) + 2, 
+       analysis.out[row,13:15])
+}
+
+axis(1, at = x.vals[2,], labels=gsub("Diet.","",cwm))
+
+legend("topright",pch=c(21:23),
+       legend=islands,
+       bty="n")
+legend("topleft", "A", bty = "n")
+dev.off()
+
+
 # make cca plot
 colnames(abund.wide) <- c("T","T","T","S","S","S","R","R","R","R","R","R","T","T","T","T","T","T","S","S","S","S","S","S","R","R","R")
 cols <- c("grey40","grey40","grey40","grey60","grey60","grey60","grey90","grey90","grey90","grey90","grey90","grey90","grey40","grey40","grey40","grey40","grey40","grey40","grey60","grey60","grey60","grey60","grey60","grey60","grey90","grey90","grey90")
@@ -617,13 +652,19 @@ vare.cca <- cca(abund.wide,fd.mat[,c(1:6,8)])#[,c(1:5)])
 vare.cca
 par(mfrow=c(1,1),pin=c(5,4))
 labls <- c("invert","vert","fruit","nectar","seed","mass")
-plot(vare.cca,type="none",scaling="sites")
+
+pdf("cca.pdf", width = 6, height = 4)
+par(mfrow=c(1,1),pin=c(3.5,3))
+plot(vare.cca,type="none",scaling="sites", las = 1)
 text(vare.cca,display="species",col=cols,cex=0.75,font=2)
 text(vare.cca,display="sites",cex=0.75,col=c("grey25"))
 text(vare.cca,display="bp",cex=1,labels = labls, scaling="sites")
+legend("topleft", "B", bty = "n")
+dev.off()
 
 
 #plot outline of islands
+par(mfrow=c(1,1),pin=c(1.5,2.5))
 map <- map_data("worldHires", xlim=c(130,150), ylim=c(12,16))
 ggplot() + coord_map()+
   geom_path(data=map, aes(x=long, y=lat, group=group)) +
